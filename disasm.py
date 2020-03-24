@@ -1,33 +1,25 @@
-from capstone import *
-import sys
-import os
-import pefile
-import hashlib
+# Python-based Instruction Disassembly
+# Marcus Botacin
 
-itf = dict()
+from capstone import *  # Disasm Framework
+import sys              # Input Argument
+import pefile           # Parse PE File
 
-for filename in os.listdir(sys.argv[1]):
-    filepath=sys.argv[1]+'/'+filename
-    digest = hashlib.sha256(open(filepath,'r').read()).hexdigest()
-    try:
-        pe = pefile.PE(filepath)
-        for sec in pe.sections:
-            characteristics = getattr(sec, 'Characteristics')
-            if characteristics & 0x00000020 > 0 or characteristics & 0x20000000 > 0:
-                data = sec.get_data()
-                md = Cs(CS_ARCH_X86, CS_MODE_64)
-                for (address, size, mnemonic, op_str) in md.disasm_lite(data, 0x1000):
-                    instruction_rep = "%s\t%s" % (mnemonic, op_str)
-                    try:
-                        x = itf[instruction_rep]
-                    except:
-                        itf[instruction_rep]=set()
-                    itf[instruction_rep].add(digest)
-    except:
-        continue
-
-for instruction in itf:
-    try:
-        print("%f\t%s" % (1/float(len(itf[instruction])),instruction))
-    except:
-        pass
+# Parse PE File
+pe = pefile.PE(sys.argv[1])
+# Enumerate All Binary Sections
+for sec in pe.sections:
+    # Get Characteristics
+    characteristics = getattr(sec, 'Characteristics')
+    # Check if Section is Executable
+    if characteristics & 0x00000020 > 0 or characteristics & 0x20000000 > 0:
+        # Get All Section Bytes
+        data = sec.get_data()
+        # interpret as 32-bit data
+        md = Cs(CS_ARCH_X86, CS_MODE_32)
+        # For each instruction
+        for i in md.disasm(data, 0x1000):
+            # Represent Instruction
+            instruction_rep = "%s\t%s" % (i.mnemonic, i.op_str)
+            # Print Instruction
+            print(instruction_rep)
